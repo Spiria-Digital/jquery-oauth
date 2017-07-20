@@ -28,12 +28,11 @@ refresh token server side
 # Installation
 Can be installed via bower package
 ```
-bower install --save jquery-oauth
+bower install --save jquery-oauth-spiria
 ```
-
-... or by cloning the repository
+... or by NPM
 ```
-git clone git@github.com:esbenp/jquery-oauth.git
+npm install --save jquery-oauth-spiria
 ```
 ... or by grabbing a zip of the latest release
 
