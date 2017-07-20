@@ -161,14 +161,16 @@ jqOAuth.prototype._setupInterceptor = function _setupInterceptor() {
 
     // Credits to gnarf @ http://stackoverflow.com/a/12446363/602488
     $.ajaxPrefilter(function(options, originalOptions, jqxhr) {
-        if (!self._shouldAddAuthorization(options)) {
-            return;
+        if (self._shouldAddAuthorization(options)) {
+            jqxhr.setRequestHeader('Authorization', 'Bearer ' + self.data.accessToken);
         }
-
-        jqxhr.setRequestHeader('Authorization', 'Bearer ' + self.data.accessToken);
 
         if (self._hasCSRFToken()) {
             jqxhr.setRequestHeader('X-CSRF-Token', this.options.csrfToken);
+        }
+
+        if (options.refreshRetry === true) {
+            return;
         }
 
         var deferred = $.Deferred();
@@ -214,7 +216,7 @@ jqOAuth.prototype._setupInterceptor = function _setupInterceptor() {
 };
 
 jqOAuth.prototype._shouldAddAuthorization = function _shouldAddAuthorization(prefilterOptions) {
-    return prefilterOptions.refreshRetry !== false && (!this._hasFilter('url') || this.options.filters.url(prefilterOptions.url));
+    return !this._hasFilter('url') || this.options.filters.url(prefilterOptions.url);
 };
 
 jqOAuth.prototype._updateStorage = function _updateStorage() {
