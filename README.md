@@ -57,6 +57,17 @@ define([/*other dependencies,*/ "jquery-oauth", function(jqOAuth){
 
 	var auth = new jqOAuth({
         csrfToken: csrfToken,
+        tokenName : 'WebServiceUsingOauth' ,
+            // Optional. You might want to set a name for your jquery-oauth instance if
+            // you intend on having multiple instances for multiple web services.
+            // This name will be used for store.js's storage. 
+        filters: {
+            url : function(url) {
+                // The ajax's request url is received to determine whether or not
+                // the Authorization header should be added.
+                // Returning true will add the header.
+            }
+        },
         events: {
             login: function() {
                 // User is hereby logged in and the 
