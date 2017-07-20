@@ -21,10 +21,6 @@ var jqOAuth = function jqOAuth(options) {
         this._resetData();
         this._updateStorage();
     }
-
-    if (options.csrfToken !== null) {
-        this._setCsrfHeader();
-    }
 }
 
 // Public methods
@@ -41,7 +37,6 @@ jqOAuth.prototype.logout = function logout() {
     this._resetData();
     this._updateStorage();
     this._deactivateInterceptor();
-    this._removeAjaxHeader("Authorization");
     this._fireEvent("logout");
 };
 
@@ -54,15 +49,11 @@ jqOAuth.prototype.login = function login(accessToken) {
 
 jqOAuth.prototype.setAccessToken = function setAccessToken(accessToken) {
     this.data.accessToken = accessToken;
-
-    this._setAuthorizationHeader();
     this._updateStorage();
 };
 
 jqOAuth.prototype.setCsrfToken = function setCsrfToken(csrfToken) {
     this.options.csrfToken = csrfToken;
-
-    this._setCsrfHeader();
 };
 
 // Private methods
@@ -95,8 +86,6 @@ jqOAuth.prototype._fireBuffer = function _fireBuffer() {
         deferred = this.buffer[i].deferred;
 
         this.buffer[i].settings.refreshRetry = true;
-        this.buffer[i].settings.headers["Authorization"] = $.ajaxSettings.headers["Authorization"];
-
         promises.push($.ajax(this.buffer[i].settings).then(deferred.resolve, deferred.reject));
     }
 
@@ -126,24 +115,12 @@ jqOAuth.prototype._hasEvent = function _hasEvent(eventType) {
     return this.options.events[eventType] !== undefined && typeof this.options.events[eventType] === "function";
 };
 
+jqOAuth.prototype._hasFilter = function _hasFilter(filterType) {
+    return this.options.filters[filterType] !== undefined && typeof this.options.filters[filterType] === 'function';
+}
+
 jqOAuth.prototype._hasStoredData = function _hasStoredData() {
     return storage.get(this.options.tokenName) !== undefined;
-};
-
-jqOAuth.prototype._isAjaxHeadersInitialized = function _isAjaxHeadersInitialized() {
-    return $.ajaxSettings.headers !== undefined;
-};
-
-jqOAuth.prototype._removeAjaxHeader = function _removeAjaxHeader(header) {
-    if (!this._isAjaxHeadersInitialized()) {
-        return true;
-    }
-    $.ajaxSettings.headers[header] = undefined;
-};
-
-jqOAuth.prototype._removeAllAjaxHeaders = function _removeAllAjaxHeaders() {
-    this._removeAjaxHeader("Authorization");
-    this._removeAjaxHeader("X-CSRF-Token");
 };
 
 jqOAuth.prototype._resetData = function _resetData() {
@@ -158,10 +135,9 @@ jqOAuth.prototype._resetOptions = function _resetOptions() {
         bufferWaitLimit: 500,
         csrfToken: null,
         events: {},
-        tokenName: 'jquery.oauth'
+        tokenName: 'jquery.oauth',
+        filters : {}
     };
-
-    this._removeAllAjaxHeaders();
 };
 
 jqOAuth.prototype._setAjaxHeader = function _setAjaxHeader(header, value) {
@@ -172,25 +148,27 @@ jqOAuth.prototype._setAjaxHeader = function _setAjaxHeader(header, value) {
     $.ajaxSettings.headers[header] = value;
 };
 
-jqOAuth.prototype._setAuthorizationHeader = function _setAuthorizationHeader() {
-    this._setAjaxHeader("Authorization", "Bearer " + this.data.accessToken);
-};
-
-jqOAuth.prototype._setCsrfHeader = function _setCsrfHeader() {
-    this._setAjaxHeader("X-CSRF-Token", this.options.csrfToken);
-};
-
 jqOAuth.prototype._setRefreshingFlag = function _setRefreshingFlag(newFlag) {
     this.refreshing = newFlag;
 };
+
+jqOAuth.prototype._hasCSRFToken = function _hasCSRFToken() {
+    return this.options.csrfToken;
+}
 
 jqOAuth.prototype._setupInterceptor = function _setupInterceptor() {
     var self = this;
 
     // Credits to gnarf @ http://stackoverflow.com/a/12446363/602488
     $.ajaxPrefilter(function(options, originalOptions, jqxhr) {
-        if (options.refreshRetry === true) {
+        if (!self._shouldAddAuthorization(options)) {
             return;
+        }
+
+        jqxhr.setRequestHeader('Authorization', 'Bearer ' + self.data.accessToken);
+
+        if (self._hasCSRFToken()) {
+            jqxhr.setRequestHeader('X-CSRF-Token', this.options.csrfToken);
         }
 
         var deferred = $.Deferred();
@@ -233,6 +211,10 @@ jqOAuth.prototype._setupInterceptor = function _setupInterceptor() {
 
         return deferred.promise(jqxhr);
     });
+};
+
+jqOAuth.prototype._shouldAddAuthorization = function _shouldAddAuthorization(prefilterOptions) {
+    return prefilterOptions.refreshRetry !== false && (!this._hasFilter('url') || this.options.filters.url(prefilterOptions.url));
 };
 
 jqOAuth.prototype._updateStorage = function _updateStorage() {
