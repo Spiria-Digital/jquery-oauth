@@ -86,19 +86,18 @@ jqOAuth.prototype._fireBuffer = function _fireBuffer() {
         deferred = this.buffer[i].deferred;
 
         this.buffer[i].settings.refreshRetry = true;
-        promises.push($.ajax(this.buffer[i].settings).then(deferred.resolve, deferred.reject));
+        promises.push(
+            $.ajax(this.buffer[i].settings)
+                .always(function(jqXHR) {
+                    if(jqXHR.status === 401)
+                        self.logout();
+                })
+                .then(deferred.resolve, deferred.reject)
+        );
     }
 
     this._clearBuffer();
-
-    $.when.apply($, promises)
-        .done(function() {
-            self._setRefreshingFlag(false);
-        })
-        .fail(function(){
-            self._setRefreshingFlag(false);
-            self.logout();
-        });
+    self._setRefreshingFlag(false);
 };
 
 jqOAuth.prototype._fireEvent = function _fireEvent(eventType) {
