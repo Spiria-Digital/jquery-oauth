@@ -188,7 +188,7 @@ jqOAuth.prototype._setupInterceptor = function _setupInterceptor() {
                 if (!self.refreshing) {
                     self._setRefreshingFlag(true);
                     self._fireEvent("tokenExpiration")
-                        .success(function () {
+                        .then(function () {
                             // Setup buffer interval that waits for all sent requests to return
                             var waited   = 0;
                             self.interval = setInterval(function(){
